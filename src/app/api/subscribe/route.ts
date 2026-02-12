@@ -1,8 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-
-const SUBSCRIBERS_FILE = path.join(process.cwd(), "subscribers.json");
 
 interface Subscriber {
   email: string;
@@ -10,20 +6,41 @@ interface Subscriber {
   subscribedAt: string;
 }
 
+// Try multiple writable paths — project root (local dev) then /tmp (Vercel serverless)
+function getFilePaths() {
+  const path = require("path");
+  return [
+    path.join(process.cwd(), "subscribers.json"),
+    "/tmp/subscribers.json",
+  ];
+}
+
 function readSubscribers(): Subscriber[] {
   try {
-    if (fs.existsSync(SUBSCRIBERS_FILE)) {
-      const data = fs.readFileSync(SUBSCRIBERS_FILE, "utf-8");
-      return JSON.parse(data);
+    const fs = require("fs");
+    for (const filePath of getFilePaths()) {
+      if (fs.existsSync(filePath)) {
+        const data = fs.readFileSync(filePath, "utf-8");
+        return JSON.parse(data);
+      }
     }
   } catch {
-    // If file is corrupted, start fresh
+    // Filesystem unavailable or file corrupted — start fresh
   }
   return [];
 }
 
 function writeSubscribers(subscribers: Subscriber[]) {
-  fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(subscribers, null, 2));
+  const fs = require("fs");
+  for (const filePath of getFilePaths()) {
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(subscribers, null, 2));
+      return; // success — stop trying other paths
+    } catch {
+      // This path isn't writable, try the next one
+    }
+  }
+  // If all file writes fail, data is still logged to console (see below)
 }
 
 export async function POST(request: NextRequest) {
@@ -62,19 +79,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    subscribers.push({
+    const newSubscriber: Subscriber = {
       email: normalizedEmail,
       source: source || "unknown",
       subscribedAt: new Date().toISOString(),
-    });
+    };
 
+    subscribers.push(newSubscriber);
+
+    // Always log to console (visible in Vercel function logs)
+    console.log("[NEW SUBSCRIBER]", JSON.stringify(newSubscriber));
+
+    // Persist to file (best-effort — works locally & on /tmp for Vercel)
     writeSubscribers(subscribers);
 
     return NextResponse.json(
       { message: "You're on the list! We'll notify you when we launch." },
       { status: 201 }
     );
-  } catch {
+  } catch (err) {
+    console.error("[SUBSCRIBE ERROR]", err);
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 }
