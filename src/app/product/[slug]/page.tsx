@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Check, Plus, Minus, Mail } from "lucide-react";
+import { Check, Plus, Minus, Mail, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Reveal from "@/components/Reveal";
 import { getProductBySlug, getRelatedProducts, formatPrice } from "@/data/products";
@@ -16,7 +16,9 @@ export default function ProductPage() {
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
-  const [joined, setJoined] = useState(false);
+  const [email, setEmail] = useState("");
+  const [subStatus, setSubStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [subMessage, setSubMessage] = useState("");
 
   if (!product) {
     return (
@@ -34,10 +36,32 @@ export default function ProductPage() {
 
   const related = getRelatedProducts(product, 3);
 
-  const handleWaitlist = (e: React.FormEvent) => {
+  const handleWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
-    setJoined(true);
-    setTimeout(() => setJoined(false), 3000);
+    if (!email) return;
+    setSubStatus("loading");
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: `product-${slug}` }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSubStatus("success");
+        setSubMessage(data.message);
+        setEmail("");
+        setTimeout(() => setSubStatus("idle"), 4000);
+      } else {
+        setSubStatus("error");
+        setSubMessage(data.error || "Something went wrong");
+        setTimeout(() => setSubStatus("idle"), 3000);
+      }
+    } catch {
+      setSubStatus("error");
+      setSubMessage("Something went wrong. Please try again.");
+      setTimeout(() => setSubStatus("idle"), 3000);
+    }
   };
 
   const toggle = (key: string) => setOpenSection(openSection === key ? null : key);
@@ -94,17 +118,35 @@ export default function ProductPage() {
               <p className="font-sans text-[10px] font-medium tracking-[0.15em] uppercase text-brand-black mb-4">Launching Soon</p>
               <form onSubmit={handleWaitlist} className="space-y-3">
                 <div className="flex border border-brand-light overflow-hidden">
-                  <input type="email" placeholder="Enter your email" required className="flex-1 bg-transparent px-4 py-3.5 text-[12px] font-sans text-brand-black placeholder:text-brand-muted focus:outline-none" />
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="flex-1 bg-transparent px-4 py-3.5 text-[12px] font-sans text-brand-black placeholder:text-brand-muted focus:outline-none"
+                  />
                   <button
                     type="submit"
-                    className={`flex items-center gap-2 px-5 py-3.5 text-[10px] font-sans font-medium tracking-[0.12em] uppercase transition-all duration-300 whitespace-nowrap ${
-                      joined ? "bg-brand-dark text-white" : "bg-brand-black text-white hover:bg-brand-dark"
+                    disabled={subStatus === "loading" || subStatus === "success"}
+                    className={`flex items-center gap-2 px-5 py-3.5 text-[10px] font-sans font-medium tracking-[0.12em] uppercase transition-all duration-300 whitespace-nowrap disabled:opacity-70 ${
+                      subStatus === "success" ? "bg-brand-dark text-white" : "bg-brand-black text-white hover:bg-brand-dark"
                     }`}
                   >
-                    {joined ? (<><Check size={12} /> Joined</>) : (<><Mail size={12} /> Join Waiting List</>)}
+                    {subStatus === "loading" ? (<><Loader2 size={12} className="animate-spin" /> Joining...</>) :
+                     subStatus === "success" ? (<><Check size={12} /> Joined!</>) :
+                     (<><Mail size={12} /> Join Waiting List</>)}
                   </button>
                 </div>
-                <p className="text-[10px] font-sans text-brand-muted">Be notified when this piece becomes available.</p>
+                <p className="text-[10px] font-sans">
+                  {subStatus === "success" ? (
+                    <span className="text-green-600">{subMessage}</span>
+                  ) : subStatus === "error" ? (
+                    <span className="text-red-500">{subMessage}</span>
+                  ) : (
+                    <span className="text-brand-muted">Be notified when this piece becomes available.</span>
+                  )}
+                </p>
               </form>
             </div>
 

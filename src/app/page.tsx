@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Check, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Reveal from "@/components/Reveal";
 import { products } from "@/data/products";
@@ -14,11 +14,49 @@ function pickRandom() {
   return heroVideos[Math.floor(Math.random() * heroVideos.length)];
 }
 
+function useSubscribe() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  const subscribe = async (source: string) => {
+    if (!email) return;
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus("success");
+        setMessage(data.message);
+        setEmail("");
+        setTimeout(() => setStatus("idle"), 4000);
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Something went wrong");
+        setTimeout(() => setStatus("idle"), 3000);
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Something went wrong. Please try again.");
+      setTimeout(() => setStatus("idle"), 3000);
+    }
+  };
+
+  return { email, setEmail, status, message, subscribe };
+}
+
 export default function Home() {
   const [heroVideo, setHeroVideo] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [parallaxY, setParallaxY] = useState(0);
   const heroRef = useRef<HTMLElement>(null);
+
+  const hero = useSubscribe();
+  const waitlist = useSubscribe();
 
   useEffect(() => {
     setHeroVideo(pickRandom());
@@ -77,22 +115,34 @@ export default function Home() {
           <div className="animate-fade-in-delay-3 mt-10 w-full max-w-md">
             <form
               className="flex border border-white/30 rounded-sm overflow-hidden"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={(e) => { e.preventDefault(); hero.subscribe("hero"); }}
             >
               <input
                 type="email"
+                required
+                value={hero.email}
+                onChange={(e) => hero.setEmail(e.target.value)}
                 placeholder="Enter your email"
                 className="flex-1 bg-transparent px-4 py-3.5 text-[12px] font-sans text-white placeholder:text-white/40 focus:outline-none"
               />
               <button
                 type="submit"
-                className="bg-white/15 hover:bg-white/25 px-5 md:px-6 py-3.5 text-[10px] font-sans font-medium tracking-[0.15em] uppercase text-white/90 transition-colors whitespace-nowrap"
+                disabled={hero.status === "loading" || hero.status === "success"}
+                className="bg-white/15 hover:bg-white/25 px-5 md:px-6 py-3.5 text-[10px] font-sans font-medium tracking-[0.15em] uppercase text-white/90 transition-colors whitespace-nowrap disabled:opacity-70 flex items-center gap-1.5"
               >
-                Notify Me
+                {hero.status === "loading" && <Loader2 size={12} className="animate-spin" />}
+                {hero.status === "success" && <Check size={12} />}
+                {hero.status === "success" ? "Done!" : "Notify Me"}
               </button>
             </form>
-            <p className="text-[10px] font-sans text-white/30 mt-3 tracking-wider">
-              Join the waiting list for early access
+            <p className="text-[10px] font-sans mt-3 tracking-wider">
+              {hero.status === "success" ? (
+                <span className="text-green-300">{hero.message}</span>
+              ) : hero.status === "error" ? (
+                <span className="text-red-300">{hero.message}</span>
+              ) : (
+                <span className="text-white/30">Join the waiting list for early access</span>
+              )}
             </p>
           </div>
         </div>
@@ -216,20 +266,31 @@ export default function Home() {
             </p>
             <form
               className="flex border border-brand-light max-w-sm mx-auto"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={(e) => { e.preventDefault(); waitlist.subscribe("waitlist"); }}
             >
               <input
                 type="email"
+                required
+                value={waitlist.email}
+                onChange={(e) => waitlist.setEmail(e.target.value)}
                 placeholder="Your email address"
                 className="flex-1 bg-transparent px-4 py-3 text-[12px] font-sans text-brand-black placeholder:text-brand-muted focus:outline-none"
               />
               <button
                 type="submit"
-                className="bg-brand-black text-white px-5 py-3 text-[10px] font-sans font-medium tracking-[0.12em] uppercase hover:bg-brand-dark transition-colors"
+                disabled={waitlist.status === "loading" || waitlist.status === "success"}
+                className="bg-brand-black text-white px-5 py-3 text-[10px] font-sans font-medium tracking-[0.12em] uppercase hover:bg-brand-dark transition-colors disabled:opacity-70 flex items-center gap-1.5"
               >
-                Join
+                {waitlist.status === "loading" && <Loader2 size={12} className="animate-spin" />}
+                {waitlist.status === "success" && <Check size={12} />}
+                {waitlist.status === "success" ? "Joined!" : "Join"}
               </button>
             </form>
+            {(waitlist.status === "success" || waitlist.status === "error") && (
+              <p className={`text-[10px] font-sans mt-3 ${waitlist.status === "success" ? "text-green-600" : "text-red-500"}`}>
+                {waitlist.message}
+              </p>
+            )}
           </Reveal>
         </div>
       </Reveal>

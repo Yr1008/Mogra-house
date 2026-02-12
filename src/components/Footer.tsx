@@ -1,9 +1,42 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Instagram, Mail } from "lucide-react";
+import { Instagram, Mail, Check, Loader2 } from "lucide-react";
 
 export default function Footer() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "footer-newsletter" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus("success");
+        setMessage(data.message);
+        setEmail("");
+        setTimeout(() => setStatus("idle"), 4000);
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Something went wrong");
+        setTimeout(() => setStatus("idle"), 3000);
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Something went wrong. Please try again.");
+      setTimeout(() => setStatus("idle"), 3000);
+    }
+  };
+
   return (
     <footer className="bg-brand-black text-white">
       <div className="px-4 md:px-8 lg:px-12 py-16 md:py-20">
@@ -96,20 +129,31 @@ export default function Footer() {
             </p>
             <form
               className="flex border border-white/20"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={handleSubscribe}
             >
               <input
                 type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Your email"
                 className="flex-1 bg-transparent px-3 py-2.5 text-[12px] font-sans text-white placeholder:text-white/30 focus:outline-none"
               />
               <button
                 type="submit"
-                className="bg-white/10 px-4 py-2.5 text-[10px] font-sans font-medium tracking-[0.1em] uppercase text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                disabled={status === "loading" || status === "success"}
+                className="bg-white/10 px-4 py-2.5 text-[10px] font-sans font-medium tracking-[0.1em] uppercase text-white/60 hover:bg-white/20 hover:text-white transition-colors disabled:opacity-70 flex items-center gap-1.5"
               >
-                Join
+                {status === "loading" && <Loader2 size={11} className="animate-spin" />}
+                {status === "success" && <Check size={11} />}
+                {status === "success" ? "Joined!" : "Join"}
               </button>
             </form>
+            {(status === "success" || status === "error") && (
+              <p className={`text-[10px] font-sans mt-2 ${status === "success" ? "text-green-400" : "text-red-400"}`}>
+                {message}
+              </p>
+            )}
           </div>
         </div>
 
