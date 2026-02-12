@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap');
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-white text-brand-black font-sans;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+
+  ::selection {
+    background: #111;
+    color: #fff;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scroll-hint {
+  0% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(8px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.5; }
+}
+
+.animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+.animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+.animate-fade-in-delay-1 { animation: fadeIn 0.8s ease-out 0.2s forwards; opacity: 0; }
+.animate-fade-in-delay-2 { animation: fadeIn 0.8s ease-out 0.4s forwards; opacity: 0; }
+.animate-fade-in-delay-3 { animation: fadeIn 0.8s ease-out 0.6s forwards; opacity: 0; }
+.animate-fade-in-delay-4 { animation: fadeIn 0.8s ease-out 0.8s forwards; opacity: 0; }
+.animate-scroll-hint { animation: scroll-hint 2s ease-in-out infinite; }
+
+/* ── Parallax helper ── */
+.parallax-hero {
+  will-change: transform;
+  transition: transform 0.1s linear;
+}
+
+/* ── Soft scale-in for media ── */
+.scroll-scale {
+  transform: scale(0.97);
+  opacity: 0;
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.scroll-scale.in-view {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ── Navbar pill scale entrance ── */
+.pill-enter {
+  transform: scale(0.95);
+  opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.4s ease-out;
+}
+.pill-enter.pill-visible {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.glass-pill {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.glass-pill:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
